@@ -41,6 +41,9 @@ void cond_wait (struct condition *, struct lock *);
 void cond_signal (struct condition *, struct lock *);
 void cond_broadcast (struct condition *, struct lock *);
 
+/* Compares two condition variables by their waiting threads' priority. Returns TRUE if the first is greater than or equal to the second; returns FALSE otherwise. */ 
+int cond_compare (struct list_elem e1, struct list_elem e2, void* aux);
+
 /* Optimization barrier.
 
    The compiler will not reorder operations across an
