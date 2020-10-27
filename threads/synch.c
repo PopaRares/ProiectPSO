@@ -336,3 +336,28 @@ cond_broadcast (struct condition *cond, struct lock *lock)
   while (!list_empty (&cond->waiters))
     cond_signal (cond, lock);
 }
+
+/* Compares two condition variables by their waiting threads' priority. 
+  Returns TRUE if the first is greater than or equal to the second; 
+  returns FALSE otherwise. */ 
+bool
+cond_compare (struct list_elem *e1, struct list_elem *e2, void* aux)
+{
+  ASSERT(e1 && e2); // check if not null
+
+  struct semaphore_elem *sem1;
+  struct semaphore_elem *sem2;
+
+  sem1 = list_entry(e1, struct semaphore_elem, elem);
+  sem2 = list_entry(e2, struct semaphore_elem, elem);
+
+  struct thread *th1;
+  struct thread *th2;
+
+  th1 = list_entry(list_front(&sem1->semaphore.waiters), struct thread, elem);
+  th2 = list_entry(list_front(&sem2->semaphore.waiters), struct thread, elem);
+
+  return th1->priority > th2->priority;
+}
+
+

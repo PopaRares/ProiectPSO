@@ -383,21 +383,21 @@ thread_get_recent_cpu (void)
   /* Not yet implemented. */
   return 0;
 }
-int
-thread_compare(struct list_elem e1, struct list_elem e2, void* aux)
+/* Compares two threads.
+  Returns TRUE if the first is greater than or equal to the second; 
+  Returns FALSE otherwise. */ 
+bool
+thread_compare(struct list_elem *e1, struct list_elem *e2, void* aux)
 {
+  ASSERT(e1 && e2); // check if not null
+
   struct thread *th1;
   struct thread *th2;
 
-  th1 = list_entry(&e1, struct thread, elem);
-  th2 = list_entry(&e2, struct thread, elem);
+  th1 = list_entry(e1, struct thread, elem);
+  th2 = list_entry(e2, struct thread, elem);
 
-  if(th1->priority > th2->priority)
-  {
-    return true;
-  }
-  
-  return false;
+  return th1->priority > th2->priority;
 }
 
 /* Idle thread.  Executes when no other thread is ready to run.

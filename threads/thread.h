@@ -138,7 +138,6 @@ void thread_set_nice (int);
 int thread_get_recent_cpu (void);
 int thread_get_load_avg (void);
 
-/* Compares two threads. Returns TRUE if the first is greater than or equal to the second; returns FALSE otherwise. */ 
-int thread_compare(struct list_elem e1, struct list_elem e2, void* aux);
+bool thread_compare(struct list_elem *e1, struct list_elem *e2, void* aux);
 
 #endif /* threads/thread.h */
