@@ -179,6 +179,9 @@ lock_init (struct lock *lock)
 
   lock->holder = NULL;
   sema_init (&lock->semaphore, 1);
+  
+  lock->value = 1;
+  list_init(&lock->waiters);
 }
 
 /* Acquires LOCK, sleeping until it becomes available if
@@ -192,12 +195,35 @@ lock_init (struct lock *lock)
 void
 lock_acquire (struct lock *lock)
 {
+  enum intr_level old_level;
+
   ASSERT (lock != NULL);
   ASSERT (!intr_context ());
   ASSERT (!lock_held_by_current_thread (lock));
 
-  sema_down (&lock->semaphore);
-  lock->holder = thread_current ();
+  struct thread *current_thread = thread_current();
+
+  old_level = intr_disable();
+  while (lock->value == 0) {
+    struct thread *lock_holder = lock->holder;
+    int crt_th_prio = current_thread->priority;
+    int lock_holder_prio = lock->holder->priority;
+
+    while (lock_holder != NULL && ) {
+
+    }
+
+    list_push_back(&lock->waiters, &current_thread->elem);
+    current_thread->waited_lock = lock;
+    thread_block();
+  }
+
+  
+  lock->value = 0;
+  lock->holder = current_thread;
+  list_push_back(&lock->holder->acquired_locks_list, &lock->acquired_locks_list_elem);
+
+  intr_set_level(old_level);
 }
 
 /* Tries to acquires LOCK and returns true if successful or false
@@ -228,11 +254,26 @@ lock_try_acquire (struct lock *lock)
 void
 lock_release (struct lock *lock) 
 {
+  enum intr_level old_level;
+  
   ASSERT (lock != NULL);
   ASSERT (lock_held_by_current_thread (lock));
 
+  old_level = intr_disable();
+  if (lock->holder->priority != lock->holder->real_priority) {
+    lock->holder->priority = lock->holder->real_priority;
+  }
+
+  list_remove(&lock->acquired_locks_list_elem);
   lock->holder = NULL;
-  sema_up (&lock->semaphore);
+  lock->value = 1;
+
+  if (!list_empty(&lock->waiters)) {
+    thread_unblock(list_entry(list_pop_front(&lock->waiters),
+                              struct thread, elem));
+  }
+
+  intr_set_level(old_level);
 }
 
 /* Returns true if the current thread holds LOCK, false

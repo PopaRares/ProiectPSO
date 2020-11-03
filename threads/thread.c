@@ -468,7 +468,10 @@ init_thread (struct thread *t, const char *name, int priority)
   strlcpy (t->name, name, sizeof t->name);
   t->stack = (uint8_t *) t + PGSIZE;
   t->priority = priority;
+  t->real_priority = priority;
   t->magic = THREAD_MAGIC;
+  list_init(&t->acquired_locks_list);
+  t->waited_lock = NULL;
   list_push_back (&all_list, &t->allelem);
 }
 
@@ -585,3 +588,25 @@ allocate_tid (void)
 /* Offset of `stack' member within `struct thread'.
    Used by switch.S, which can't figure it out on its own. */
 uint32_t thread_stack_ofs = offsetof (struct thread, stack);
+
+void
+thread_recompute_priority(struct thread *thread)
+{
+  int maxPriority = thread->real_priority;
+  struct list_elem *pizda;
+  for (pizda = list_begin(&thread->acquired_locks_list);
+      pizda != list_end(&thread->acquired_locks_list);
+      pizda = list_next(pizda)
+  ){
+    struct lock *penis = list_entry(pizda, struct lock, acquired_locks_list_elem);
+    for (struct thread *th = list_begin(&penis->waiters);
+        th != list_end(&penis->waiters);
+        th = list_next(th)
+    ) {
+      if (maxPriority < th->priority) {
+        maxPriority = th->priority;
+      }
+    }
+  }
+  thread->priority = maxPriority;
+}
