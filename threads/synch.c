@@ -69,6 +69,7 @@ sema_down (struct semaphore *sema)
   while (sema->value == 0) 
     {
       list_insert_ordered (&sema->waiters, &thread_current ()->elem, thread_compare, NULL);
+      // list_push_back (&sema->waiters, &thread_current ()->elem);
       thread_block ();
     }
   sema->value--;
@@ -295,7 +296,8 @@ cond_wait (struct condition *cond, struct lock *lock)
   ASSERT (lock_held_by_current_thread (lock));
   
   sema_init (&waiter.semaphore, 0);
-  list_insert_ordered (&cond->waiters, &waiter.elem, thread_compare, NULL);
+  list_insert_ordered (&cond->waiters, &waiter.elem, cond_compare, NULL);
+  // list_push_back (&cond->waiters, &waiter.elem);
   lock_release (lock);
   sema_down (&waiter.semaphore);
   lock_acquire (lock);
@@ -341,7 +343,7 @@ cond_broadcast (struct condition *cond, struct lock *lock)
   Returns TRUE if the first is greater than or equal to the second; 
   returns FALSE otherwise. */ 
 bool
-cond_compare (struct list_elem *e1, struct list_elem *e2, void* aux)
+cond_compare (struct list_elem *e1, struct list_elem *e2, void* aux UNUSED)
 {
   ASSERT(e1 && e2); // check if not null
 
@@ -353,6 +355,9 @@ cond_compare (struct list_elem *e1, struct list_elem *e2, void* aux)
 
   struct thread *th1;
   struct thread *th2;
+
+  if(list_empty(&sem1->semaphore.waiters) || list_empty(&sem2->semaphore.waiters))
+    return true;
 
   th1 = list_entry(list_front(&sem1->semaphore.waiters), struct thread, elem);
   th2 = list_entry(list_front(&sem2->semaphore.waiters), struct thread, elem);
