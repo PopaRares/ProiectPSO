@@ -34,22 +34,17 @@ static void real_time_sleep (int64_t num, int32_t denom);
 static void real_time_delay (int64_t num, int32_t denom);
 
 
-bool alarm_clock_compare(struct list_elem t1, struct list_elem t2, void* aux){
-  struct alarm_clock *alarm1 = list_entry(&t1, struct alarm_clock, alarm_clock_elem);
-  struct alarm_clock *alarm2 = list_entry(&t2, struct alarm_clock, alarm_clock_elem);
+bool alarm_clock_compare(struct list_elem *t1, struct list_elem *t2, void* aux UNUSED){
+  struct alarm_clock *alarm1 = list_entry(t1, struct alarm_clock, alarm_clock_elem);
+  struct alarm_clock *alarm2 = list_entry(t2, struct alarm_clock, alarm_clock_elem);
 
-  if (alarm1->waking_time < alarm2->waking_time){
-    aux = true;
-  } else
-  {
-    aux = false;
-  }
-  
+  return (alarm1->waking_time < alarm2->waking_time);
 }
 
-void alarm_clock_check(struct list_elem* t){
+void alarm_clock_check(struct thread* t){
+  
   if (t <= timer_ticks()){
-    list_pop_front(t);
+    list_pop_front(&alarm_clock_list);
     thread_unblock(t);
   }
 }
@@ -57,9 +52,13 @@ void alarm_clock_check(struct list_elem* t){
 void alarm_clock_check_all(void){
   struct list_elem *aux = &alarm_clock_list.head;
 
-  while (aux){
+ /* while (aux){
     alarm_clock_check(aux);
     aux = aux->next;
+  }*/
+  for(aux = list_begin(&alarm_clock_list); aux != list_end(&alarm_clock_list); aux = list_next(aux)){
+    struct thread *th = list_entry(aux, struct thread, elem);
+    alarm_clock_check(th);
   }
 }
 
@@ -123,18 +122,19 @@ timer_elapsed (int64_t then)
 void
 timer_sleep (int64_t ticks) 
 {
-  int64_t start = timer_ticks ();
+  int64_t start = timer_ticks();
   enum intr_level old_level;
-
-  ASSERT (intr_get_level () == INTR_ON);
   struct alarm_clock alarm;
-  alarm.waking_time = ticks + timer_ticks();
-  alarm.thread = thread_current;
+  alarm.waking_time = ticks + start;
+  alarm.thread = thread_current();
+
+  //ASSERT (intr_get_level () == INTR_ON);
+
   old_level = intr_disable();
-  list_insert_ordered(&alarm_clock_list, &alarm, alarm_clock_compare, NULL);
+  list_insert_ordered(&alarm_clock_list, &alarm.alarm_clock_elem , alarm_clock_compare, NULL);
+  //list_push_back(&alarm_clock_list, &alarm);
   thread_block();
   intr_set_level(old_level);
-
   
  // while (timer_elapsed (start) < ticks) 
  //   thread_yield ();
@@ -215,6 +215,8 @@ timer_print_stats (void)
 static void
 timer_interrupt (struct intr_frame *args UNUSED)
 {
+  ticks++;
+  thread_tick();
   alarm_clock_check_all();
 }
 

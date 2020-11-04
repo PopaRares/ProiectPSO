@@ -31,8 +31,8 @@ struct alarm_clock
     struct list_elem alarm_clock_elem;
 };
 
-bool alarm_clock_compare(struct list_elem t1, struct list_elem t2, void* aux);
-void alarm_clock_check(struct list_elem* t);
+bool alarm_clock_compare(struct list_elem *t1, struct list_elem *t2, void* aux);
+void alarm_clock_check(struct thread* t);
 void alarm_clock_check_all(void);
 
 
