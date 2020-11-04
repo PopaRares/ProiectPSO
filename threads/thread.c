@@ -71,6 +71,9 @@ static void schedule (void);
 void thread_schedule_tail (struct thread *prev);
 static tid_t allocate_tid (void);
 
+void thread_recompute_priority(struct thread *th);
+void thread_donate_priority(struct thread *th_lkholder);
+
 /* Initializes the threading system by transforming the code
    that's currently running into a thread.  This can't work in
    general and it is possible in this case only because loader.S
@@ -343,7 +346,10 @@ thread_foreach (thread_action_func *func, void *aux)
 void
 thread_set_priority (int new_priority) 
 {
-  thread_current ()->priority = new_priority;
+  thread_current ()->real_priority = new_priority;
+  if (new_priority > thread_current()->priority) {
+    thread_recompute_priority(thread_current());
+  }
 }
 
 /* Returns the current thread's priority. */
@@ -590,23 +596,36 @@ allocate_tid (void)
 uint32_t thread_stack_ofs = offsetof (struct thread, stack);
 
 void
-thread_recompute_priority(struct thread *thread)
+thread_recompute_priority(struct thread *th)
 {
-  int maxPriority = thread->real_priority;
-  struct list_elem *pizda;
-  for (pizda = list_begin(&thread->acquired_locks_list);
-      pizda != list_end(&thread->acquired_locks_list);
-      pizda = list_next(pizda)
+  if(th == NULL) return;
+  int maxPriority = th->real_priority;
+  for (struct list_elem *lk_acquired = list_begin(&th->acquired_locks_list);
+      lk_acquired != list_end(&th->acquired_locks_list);
+      lk_acquired = list_next(lk_acquired)
   ){
-    struct lock *penis = list_entry(pizda, struct lock, acquired_locks_list_elem);
-    for (struct thread *th = list_begin(&penis->waiters);
-        th != list_end(&penis->waiters);
-        th = list_next(th)
+    struct lock *lk_aq = list_entry(lk_acquired, struct lock, acquired_locks_list_elem);
+    for (struct list_elem *waitin_th_elem = list_begin(&lk_aq->waiters);
+        waitin_th_elem != list_end(&lk_aq->waiters);
+        waitin_th_elem = list_next(waitin_th_elem)
     ) {
-      if (maxPriority < th->priority) {
-        maxPriority = th->priority;
+      struct thread *waitin_th = list_entry(waitin_th_elem, struct thread, elem);
+      if (maxPriority < waitin_th->priority) {
+        maxPriority = waitin_th->priority;
       }
     }
   }
-  thread->priority = maxPriority;
+  th->priority = maxPriority;
+}
+
+void
+thread_donate_priority(struct thread *th_lkholder) {
+  struct thread *donor = thread_current();
+  struct thread *lock_holders = th_lkholder;
+
+  while (lock_holders != NULL && donor->priority > th_lkholder->priority) {
+    lock_holders->priority = donor->priority;
+    donor = lock_holders;
+    lock_holders = lock_holders->waited_lock;
+  }
 }

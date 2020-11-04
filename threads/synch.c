@@ -201,18 +201,11 @@ lock_acquire (struct lock *lock)
   ASSERT (!intr_context ());
   ASSERT (!lock_held_by_current_thread (lock));
 
+  old_level = intr_disable();
   struct thread *current_thread = thread_current();
 
-  old_level = intr_disable();
   while (lock->value == 0) {
-    struct thread *lock_holder = lock->holder;
-    int crt_th_prio = current_thread->priority;
-    int lock_holder_prio = lock->holder->priority;
-
-    while (lock_holder != NULL && ) {
-
-    }
-
+    thread_donate_priority(lock->holder);
     list_push_back(&lock->waiters, &current_thread->elem);
     current_thread->waited_lock = lock;
     thread_block();
@@ -221,6 +214,7 @@ lock_acquire (struct lock *lock)
   
   lock->value = 0;
   lock->holder = current_thread;
+  // current_thread->waited_lock = NULL;
   list_push_back(&lock->holder->acquired_locks_list, &lock->acquired_locks_list_elem);
 
   intr_set_level(old_level);
@@ -260,11 +254,10 @@ lock_release (struct lock *lock)
   ASSERT (lock_held_by_current_thread (lock));
 
   old_level = intr_disable();
-  if (lock->holder->priority != lock->holder->real_priority) {
-    lock->holder->priority = lock->holder->real_priority;
-  }
 
   list_remove(&lock->acquired_locks_list_elem);
+  thread_recompute_priority(lock->holder);
+  lock->holder->waited_lock = NULL;
   lock->holder = NULL;
   lock->value = 1;
 
