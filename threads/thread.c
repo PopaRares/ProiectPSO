@@ -360,7 +360,8 @@ thread_set_priority (int new_priority)
 {
   int old_priority = thread_current()->priority;
   thread_current ()->real_priority = new_priority;
-  thread_current ()->priority = new_priority;
+  if (new_priority > old_priority)
+    thread_current ()->priority = new_priority;
 
   if(!list_empty(&ready_list))
   {
@@ -660,9 +661,12 @@ thread_donate_priority(struct thread *th_lkholder) {
   struct thread *donor = thread_current();
   struct thread *lock_holders = th_lkholder;
 
-  while (lock_holders != NULL && donor->priority > th_lkholder->priority) {
+  while (lock_holders != NULL &&
+        donor->priority > lock_holders->priority
+  ) {
     lock_holders->priority = donor->priority;
     donor = lock_holders;
-    lock_holders = lock_holders->waited_lock;
+    if (lock_holders->waited_lock == NULL) break;
+    lock_holders = lock_holders->waited_lock->holder;
   }
 }
