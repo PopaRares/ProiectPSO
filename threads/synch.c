@@ -69,7 +69,6 @@ sema_down (struct semaphore *sema)
   while (sema->value == 0) 
     {
       list_insert_ordered (&sema->waiters, &thread_current ()->elem, thread_compare, NULL);
-      // list_push_back (&sema->waiters, &thread_current ()->elem);
       thread_block ();
     }
   sema->value--;
@@ -209,7 +208,7 @@ lock_acquire (struct lock *lock)
 
   while (lock->value == 0) {
     thread_donate_priority(lock->holder);
-    list_push_back(&lock->waiters, &current_thread->elem);
+    list_insert_ordered(&lock->waiters, &current_thread->elem, thread_compare, NULL);
     current_thread->waited_lock = lock;
     thread_block();
   }
@@ -217,7 +216,7 @@ lock_acquire (struct lock *lock)
   
   lock->value = 0;
   lock->holder = current_thread;
-  // current_thread->waited_lock = NULL;
+  current_thread->waited_lock = NULL;
   list_push_back(&lock->holder->acquired_locks_list, &lock->acquired_locks_list_elem);
 
   intr_set_level(old_level);
@@ -260,7 +259,7 @@ lock_release (struct lock *lock)
 
   list_remove(&lock->acquired_locks_list_elem);
   thread_recompute_priority(lock->holder);
-  lock->holder->waited_lock = NULL;
+  // lock->holder->waited_lock = NULL;
   lock->holder = NULL;
   lock->value = 1;
 
@@ -333,7 +332,6 @@ cond_wait (struct condition *cond, struct lock *lock)
   
   sema_init (&waiter.semaphore, 0);
   list_insert_ordered (&cond->waiters, &waiter.elem, cond_compare, NULL);
-  // list_push_back (&cond->waiters, &waiter.elem);
   lock_release (lock);
   sema_down (&waiter.semaphore);
   lock_acquire (lock);
