@@ -611,7 +611,7 @@ schedule (void)
   ASSERT (is_thread (next));
 
   if (cur != next)
-    prev = switch_threads (cur, next);
+    prev = switch_threads(cur, next);
   thread_schedule_tail (prev);
 }
 
