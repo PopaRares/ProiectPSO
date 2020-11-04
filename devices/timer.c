@@ -41,25 +41,25 @@ bool alarm_clock_compare(struct list_elem *t1, struct list_elem *t2, void* aux U
   return (alarm1->waking_time < alarm2->waking_time);
 }
 
-void alarm_clock_check(struct thread* t){
-  
-  if (t <= timer_ticks()){
-    list_pop_front(&alarm_clock_list);
-    thread_unblock(t);
-  }
+bool alarm_clock_check(struct alarm_clock* alarm){
+  return alarm->waking_time <= timer_ticks();
 }
 
 void alarm_clock_check_all(void){
-  struct list_elem *aux = &alarm_clock_list.head;
 
- /* while (aux){
-    alarm_clock_check(aux);
-    aux = aux->next;
-  }*/
-  for(aux = list_begin(&alarm_clock_list); aux != list_end(&alarm_clock_list); aux = list_next(aux)){
-    struct thread *th = list_entry(aux, struct thread, elem);
-    alarm_clock_check(th);
+  bool unblocked = true;
+  struct list_elem *element;
+  while(unblocked == true && !list_empty(&alarm_clock_list)){
+    unblocked = false;
+    struct alarm_clock *alarm = list_entry(list_begin(&alarm_clock_list), struct alarm_clock, alarm_clock_elem);
+    if(alarm_clock_check(alarm))
+    {
+      unblocked = true;
+      thread_unblock(alarm->thread);
+      list_pop_front(&alarm_clock_list);
+    }
   }
+
 }
 
 /* Sets up the timer to interrupt TIMER_FREQ times per second,
