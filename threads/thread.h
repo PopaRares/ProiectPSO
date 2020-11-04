@@ -93,6 +93,10 @@ struct thread
     /* Shared between thread.c and synch.c. */
     struct list_elem elem;              /* List element. */
 
+    int real_priority;                  /* Priority used for Priority Donation */
+    struct list acquired_locks_list;    /* List of all aquired locks */
+    struct lock* waited_lock;           /* A lock the thread is waiting for */
+
 #ifdef USERPROG
     /* Owned by userprog/process.c. */
     uint32_t *pagedir;                  /* Page directory. */
@@ -137,5 +141,8 @@ int thread_get_nice (void);
 void thread_set_nice (int);
 int thread_get_recent_cpu (void);
 int thread_get_load_avg (void);
+
+void thread_recompute_priority(struct thread *th);
+void thread_donate_priority(struct thread *th_lkholder);
 
 #endif /* threads/thread.h */
