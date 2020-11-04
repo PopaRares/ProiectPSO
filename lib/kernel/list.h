@@ -25,7 +25,6 @@
    like so:
 
       struct list foo_list;
-
       list_init (&foo_list);
 
    Iteration is a typical situation where it is necessary to

@@ -30,6 +30,7 @@ test_priority_sema (void)
       thread_create (name, priority, priority_sema_thread, NULL);
     }
 
+  sema_up(&sema);
   for (i = 0; i < 10; i++) 
     {
       sema_up (&sema);
@@ -42,4 +43,16 @@ priority_sema_thread (void *aux UNUSED)
 {
   sema_down (&sema);
   msg ("Thread %s woke up.", thread_name ());
+}
+
+static void print_sema()
+{
+  struct list_elem *e;
+  printf("In semaphore: %d threads\n", list_size(&sema.waiters));
+  for (e = list_begin (&sema.waiters); e != list_end (&sema.waiters); e = list_next (e))
+  {
+    struct thread *t = list_entry (e, struct thread, elem);
+    printf("%s|", t->name);
+  }
+  printf("\n");
 }

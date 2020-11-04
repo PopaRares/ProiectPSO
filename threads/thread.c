@@ -248,8 +248,19 @@ thread_unblock (struct thread *t)
 
   old_level = intr_disable ();
   ASSERT (t->status == THREAD_BLOCKED);
-  list_push_back (&ready_list, &t->elem);
+
+
   t->status = THREAD_READY;
+
+  list_insert_ordered (&ready_list, &t->elem, thread_compare, NULL);
+
+  if(thread_current() != idle_thread && thread_current()->priority < t->priority)
+    if(intr_context())
+      intr_yield_on_return();
+    else
+      thread_yield();
+
+
   intr_set_level (old_level);
 }
 
@@ -310,6 +321,7 @@ thread_exit (void)
 /* Yields the CPU.  The current thread is not put to sleep and
    may be scheduled again immediately at the scheduler's whim. */
 void
+
 thread_yield (void) 
 {
   struct thread *cur = thread_current ();
@@ -319,7 +331,7 @@ thread_yield (void)
 
   old_level = intr_disable ();
   if (cur != idle_thread) 
-    list_push_back (&ready_list, &cur->elem);
+    list_insert_ordered (&ready_list, &cur->elem, thread_compare, NULL);
   cur->status = THREAD_READY;
   schedule ();
   intr_set_level (old_level);
@@ -346,9 +358,18 @@ thread_foreach (thread_action_func *func, void *aux)
 void
 thread_set_priority (int new_priority) 
 {
+  int old_priority = thread_current()->priority;
   thread_current ()->real_priority = new_priority;
-  if (new_priority > thread_current()->priority) {
-    thread_recompute_priority(thread_current());
+  thread_current ()->priority = new_priority;
+
+  if(!list_empty(&ready_list))
+  {
+    struct thread *newThread = list_entry(list_begin(&ready_list), struct thread, elem);
+    if(newThread != NULL && newThread->priority > new_priority)
+    {
+      thread_recompute_priority(thread_current());
+      thread_yield();
+    }
   }
 }
 
@@ -388,6 +409,22 @@ thread_get_recent_cpu (void)
 {
   /* Not yet implemented. */
   return 0;
+}
+/* Compares two threads.
+  Returns TRUE if the first is greater than or equal to the second; 
+  Returns FALSE otherwise. */ 
+bool
+thread_compare(struct list_elem *e1, struct list_elem *e2, void* aux UNUSED)
+{
+  ASSERT(e1 && e2); // check if not null
+
+  struct thread *th1;
+  struct thread *th2;
+
+  th1 = list_entry(e1, struct thread, elem);
+  th2 = list_entry(e2, struct thread, elem);
+
+  return th1->priority > th2->priority;
 }
 
 /* Idle thread.  Executes when no other thread is ready to run.
@@ -446,7 +483,7 @@ running_thread (void)
   uint32_t *esp;
 
   /* Copy the CPU's stack pointer into `esp', and then round that
-     down to the start of a page.  Because `struct thread' is
+     down to the start of a page.  Because `struct tfhread' is
      always at the beginning of a page and the stack pointer is
      somewhere in the middle, this locates the curent thread. */
   asm ("mov %%esp, %0" : "=g" (esp));
