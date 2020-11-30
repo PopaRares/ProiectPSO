@@ -3,13 +3,41 @@
 #include <syscall-nr.h>
 #include "threads/interrupt.h"
 #include "threads/thread.h"
+#include "threads/vaddr.h"
 
 #include "filesys/filesys.h"
 #include "filesys/file.h"
 
 #include "process.h"
+#include "pagedir.h"
 
 static void syscall_handler (struct intr_frame *);
+
+/* 
+  verifies a number of addresses used in system calls 
+  launches an unexpected exit if address is bust
+*/
+void
+verify_addresses(void *p, int num)
+{
+  void *iterator = p;
+  for (int i = 0; i < num; i++, iterator++)
+  {
+    if( iterator == NULL ||
+       !is_user_vaddr(iterator) ||
+       !pagedir_get_page(thread_current()->pagedir, iterator))
+    {
+      unexpected_exit();
+    }
+  }
+}
+
+void
+unexpected_exit()
+{
+  // should set current_thread exit status to -1
+  thread_exit();
+}
 
 void
 syscall_init (void) 
@@ -21,7 +49,7 @@ static void
 syscall_handler (struct intr_frame *f UNUSED) 
 {
   int* addr = f->esp;
-  //verify pointer
+  verify_addresses(addr, 1);
 
 	int syscall_no = (int*)addr++;
 	printf ("system call no %d!\n", syscall_no);
@@ -33,7 +61,7 @@ syscall_handler (struct intr_frame *f UNUSED)
 			break;
 
     case SYS_CREATE: // creates a new file, returns true/false, depending on the outcome
-      // verify 2 addresses
+      verify_addresses(addr, 2);
       // aquire file lock
       const char* fileName = (char*)addr[0];
       off_t size = (int*)addr[1];
@@ -42,7 +70,7 @@ syscall_handler (struct intr_frame *f UNUSED)
       break;
 
     case SYS_REMOVE: // deletes file, returns true/false, depending on the outcome
-      // verify 1 address
+      verify_addresses(addr, 1);
       // aquire file lock
       const char* fileName = (char*)addr[0];
       f->eax = filesys_remove(fileName);
@@ -50,7 +78,7 @@ syscall_handler (struct intr_frame *f UNUSED)
       break;
 
     case SYS_OPEN: //opens file and returns its respective file descriptor
-      // verify 1 address
+      verify_addresses(addr, 1);
       // aquire file lock
       const char* fileName = (char*)addr[0];
       struct file* file = filesys_open(fileName);
@@ -71,7 +99,7 @@ syscall_handler (struct intr_frame *f UNUSED)
       break;
 
     case SYS_FILESIZE: //returns size of file
-      // verify 1 address
+      verify_addresses(addr, 1);
       int fd = addr[0];
       struct opened_file* op_f = getFile(fd);
       if(op_f)
@@ -87,7 +115,7 @@ syscall_handler (struct intr_frame *f UNUSED)
       break;
 
     case SYS_READ: //reads from file into buffer, returns number of bytes actually read
-      // verify 3 addresses
+      verify_addresses(addr, 3);
       int fd = addr[0];
       int* buffer = addr[1];
       int size = addr[2];
@@ -116,7 +144,7 @@ syscall_handler (struct intr_frame *f UNUSED)
       break;
 
     case SYS_WRITE: //writes to file from buffer, returns number of bytess actualy written
-      // verify 3 addresses
+      verify_addresses(addr, 3);
       int fd = addr[0];
       int* buffer = addr[1];
       int size = addr[2];
@@ -142,7 +170,7 @@ syscall_handler (struct intr_frame *f UNUSED)
       break;
 
     case SYS_SEEK: //changes next byte to be accessed in the open file
-      // verify 2 addresses
+      verify_addresses(addr, 2);
       int fd = addr[0];
       int position = addr[1];
       struct opened_file* op_f = getFile(fd);
@@ -160,7 +188,7 @@ syscall_handler (struct intr_frame *f UNUSED)
       break;
 
     case SYS_TELL: //returns the position of the next byte to be accessed from the file
-      // verify 1 address
+      verify_addresses(addr, 1);
       int fd = addr[0];
       struct opened_file* op_f = getFile(fd);
       if(op_f)
@@ -176,7 +204,7 @@ syscall_handler (struct intr_frame *f UNUSED)
       break;
 
     case SYS_CLOSE: //closes file descriptor
-      // verify 1 address
+      verify_addresses(addr, 1);
       int fd = addr[0];
       struct opened_file* op_f = getFile(fd);
       if(op_f)
@@ -193,6 +221,9 @@ syscall_handler (struct intr_frame *f UNUSED)
         f->eax = -1;
       }
       break;
+
+    default:
+      unexpected_exit();
 	}
 
 	thread_exit ();
