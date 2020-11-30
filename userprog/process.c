@@ -486,3 +486,17 @@ struct opened_file* getFile(int fd)
   }
     return NULL;
 }
+
+/* closes all process files in the event of an EXIT sys call */
+void close_all_files()
+{
+  struct list_elem *e;
+  while(!list_empty(&files))
+  {
+    e = list_pop_front(&files);
+    struct opened_file *op_f = list_entry(e, struct opened_file, file_elem);
+    file_close(op_f->file);
+    list_remove(e);
+    free(op_f);
+  }
+}

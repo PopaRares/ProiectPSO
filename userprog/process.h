@@ -19,5 +19,6 @@ void process_exit (void);
 void process_activate (void);
 
 struct opened_file* getFile(int fd);
+void close_all_files();
 
 #endif /* userprog/process.h */
