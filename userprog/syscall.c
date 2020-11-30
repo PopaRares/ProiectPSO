@@ -62,27 +62,27 @@ syscall_handler (struct intr_frame *f UNUSED)
 
     case SYS_CREATE: // creates a new file, returns true/false, depending on the outcome
       verify_addresses(addr, 2);
-      // aquire file lock
+      aquire_file_lock();
       const char* fileName = (char*)addr[0];
       off_t size = (int*)addr[1];
       f->eax = filesys_create(fileName, size);
-      // release file lock
+      release_file_lock();
       break;
 
     case SYS_REMOVE: // deletes file, returns true/false, depending on the outcome
       verify_addresses(addr, 1);
-      // aquire file lock
+      aquire_file_lock();
       const char* fileName = (char*)addr[0];
       f->eax = filesys_remove(fileName);
-      // release file lock
+      release_file_lock();
       break;
 
     case SYS_OPEN: //opens file and returns its respective file descriptor
       verify_addresses(addr, 1);
-      // aquire file lock
+      aquire_file_lock();
       const char* fileName = (char*)addr[0];
       struct file* file = filesys_open(fileName);
-      // release file lock
+      release_file_lock();
       if(file)
       {
         struct opened_file* op_f = malloc(sizeof(struct opened_file));
@@ -104,9 +104,9 @@ syscall_handler (struct intr_frame *f UNUSED)
       struct opened_file* op_f = getFile(fd);
       if(op_f)
       {
-        // aquire file lock
+        aquire_file_lock();
         f->eax = file_length(op_f->file);
-        // release file lock
+        release_file_lock();
       }
       else 
       {
@@ -132,9 +132,9 @@ syscall_handler (struct intr_frame *f UNUSED)
         struct opened_file* op_f = getFile(fd);
         if(op_f)
         {
-          // aquire file lock
+          aquire_file_lock();
           f->eax = file_read(op_f->file, buffer, size);
-          // release file lock
+          release_file_lock();
         }
         else
         {
@@ -158,9 +158,9 @@ syscall_handler (struct intr_frame *f UNUSED)
         struct opened_file* op_f = getFile(fd);
         if(op_f)
         {
-          // aquire file lock
+          aquire_file_lock();
           f->eax = file_write(op_f->file, buffer, size);
-          // release file lock
+          release_file_lock();
         }
         else
         {
@@ -176,9 +176,9 @@ syscall_handler (struct intr_frame *f UNUSED)
       struct opened_file* op_f = getFile(fd);
       if(op_f)
       {
-        // aquire file lock
+        aquire_file_lock();
         file_seek(op_f->file, position);
-        // release file lock
+        release_file_lock();
         f->eax = 0;
       }
       else
@@ -193,9 +193,9 @@ syscall_handler (struct intr_frame *f UNUSED)
       struct opened_file* op_f = getFile(fd);
       if(op_f)
       {
-        // aquire file lock
+        aquire_file_lock();
         f->eax = file_tell(op_f->file);
-        // release file lock
+        release_file_lock();
       }
       else
       {
@@ -209,9 +209,9 @@ syscall_handler (struct intr_frame *f UNUSED)
       struct opened_file* op_f = getFile(fd);
       if(op_f)
       {
-        // aquire file lock
+        aquire_file_lock();
         file_close(op_f->file);
-        // release file lock
+        release_file_lock();
         list_remove(&op_f->file_elem);
         free(op_f);
         f->eax = 0;
