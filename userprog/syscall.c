@@ -60,7 +60,10 @@ syscall_handler (struct intr_frame *f UNUSED)
       aquire_file_lock(); // maybe use lock internally for each file?
         close_all_files();
       release_file_lock();
+
+      struct file* th_file = thread_current()->self;
 			thread_exit();
+      file_allow_write(th_file); // allow writing to executable
 			break;
 
     case SYS_CREATE: // creates a new file, returns true/false, depending on the outcome
