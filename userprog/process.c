@@ -21,6 +21,7 @@
 static thread_func start_process NO_RETURN;
 static bool load (const char *cmdline, void (**eip) (void), void **esp);
 
+
 /* Starts a new thread running a user program loaded from
    FILENAME.  The new thread may be scheduled (and may even exit)
    before process_execute() returns.  Returns the new process's
@@ -60,6 +61,9 @@ start_process (void *file_name_)
   if_.cs = SEL_UCSEG;
   if_.eflags = FLAG_IF | FLAG_MBS;
   success = load (file_name, &if_.eip, &if_.esp);
+
+  /* Initialize file list */
+  list_init(&files);
 
   /* If load failed, quit. */
   palloc_free_page (file_name);
@@ -469,4 +473,16 @@ install_page (void *upage, void *kpage, bool writable)
      address, then map our page there. */
   return (pagedir_get_page (t->pagedir, upage) == NULL
           && pagedir_set_page (t->pagedir, upage, kpage, writable));
+}
+
+/* finds file by file descriptor */
+struct opened_file* getFile(int fd)
+{
+  for (struct list_elem* e = list_begin (&files); e != list_end (&files); e = list_next (e))
+  {
+    struct opened_file* op_f = list_entry(e, struct opened_file, file_elem);
+    if(op_f->fd == fd)
+      return op_f;
+  }
+    return NULL;
 }
