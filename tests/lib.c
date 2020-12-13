@@ -1,11 +1,9 @@
-#include "lib.h"
+#include "tests/lib.h"
 #include <random.h>
 #include <stdarg.h>
 #include <stdio.h>
 #include <string.h>
 #include <syscall.h>
-#include <stdint.h>
-#include <unistd.h>
 
 const char *test_name;
 bool quiet = false;
@@ -42,7 +40,7 @@ void
 fail (const char *format, ...) 
 {
   va_list args;
-#include <stdint.h>
+
   va_start (args, format);
   vmsg (format, args, ": FAILED\n");
   va_end (args);

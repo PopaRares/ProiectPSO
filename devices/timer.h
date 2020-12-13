@@ -3,12 +3,6 @@
 
 #include <round.h>
 #include <stdint.h>
-#include <debug.h>
-#include <inttypes.h>
-#include "devices/pit.h"
-#include "threads/interrupt.h"
-#include "threads/synch.h"
-#include "threads/thread.h"
 
 /* Number of timer interrupts per second. */
 #define TIMER_FREQ 100
@@ -18,23 +12,6 @@ void timer_calibrate (void);
 
 int64_t timer_ticks (void);
 int64_t timer_elapsed (int64_t);
-
-struct alarm_clock
-{
-    // time to wake up
-    int64_t waking_time ;
-
-    // thread to be awaken
-    struct thread *thread ;
-    
-    // to add the timer in the global list of timers
-    struct list_elem alarm_clock_elem;
-};
-
-bool alarm_clock_compare(struct list_elem *t1, struct list_elem *t2, void* aux);
-void alarm_clock_check(struct thread* t);
-void alarm_clock_check_all(void);
-
 
 /* Sleep and yield the CPU to other threads. */
 void timer_sleep (int64_t ticks);
