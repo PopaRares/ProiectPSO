@@ -590,7 +590,7 @@ allocate_tid (void)
 uint32_t thread_stack_ofs = offsetof (struct thread, stack);
 
 void
-aquire_file_lock()
+acquire_file_lock()
 {
   lock_acquire(&file_lock);
 }

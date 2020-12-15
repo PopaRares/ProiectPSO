@@ -62,8 +62,6 @@ start_process (void *file_name_)
   if_.eflags = FLAG_IF | FLAG_MBS;
   success = load (file_name, &if_.eip, &if_.esp);
 
-  /* Initialize file list */
-  list_init(&files);
 
   /* If load failed, quit. */
   palloc_free_page (file_name);
@@ -222,6 +220,12 @@ load (const char *file_name, void (**eip) (void), void **esp)
   off_t file_ofs;
   bool success = false;
   int i;
+
+  int fd_counter = 3;
+  struct list files;
+  
+  /* Initialize file list */
+  list_init(&files);
 
   /* Allocate and activate page directory. */
   t->pagedir = pagedir_create ();
