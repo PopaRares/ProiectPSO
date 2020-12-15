@@ -18,6 +18,8 @@
 #include "threads/thread.h"
 #include "threads/vaddr.h"
 
+#include <syscall-nr.h>
+
 static thread_func start_process NO_RETURN;
 static bool load (const char *cmdline, void (**eip) (void), void **esp);
 
@@ -478,6 +480,9 @@ install_page (void *upage, void *kpage, bool writable)
           && pagedir_set_page (t->pagedir, upage, kpage, writable));
 }
 
+
+static void
+start_process_uthread(struct uthread_args *th_arg);
 
 tid_t
 process_uthread_execute (struct uthread_args *th_arg)
