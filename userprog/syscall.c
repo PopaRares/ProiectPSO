@@ -42,6 +42,32 @@ unexpected_exit()
   thread_exit();
 }
 
+/* 
+  verifies a number of addresses used in system calls 
+  launches an unexpected exit if address is bust
+*/
+void
+verify_addresses(void *p, int num)
+{
+  void *iterator = p;
+  for (int i = 0; i < num; i++, iterator++)
+  {
+    if( iterator == NULL ||
+       !is_user_vaddr(iterator) ||
+       !pagedir_get_page(thread_current()->pagedir, iterator))
+    {
+      unexpected_exit();
+    }
+  }
+}
+
+void
+unexpected_exit()
+{
+  // should set current_thread exit status to -1
+  thread_exit();
+}
+
 void
 syscall_init (void) 
 {
@@ -52,16 +78,19 @@ static void
 syscall_handler (struct intr_frame *f UNUSED) 
 {
   int* addr = f->esp;
+
   struct file* file;
   char* fileName;
   off_t size;
   struct opened_file* op_f;
   int fd;
   char* buffer;
+  
   verify_addresses(addr, 1);
 
 	int syscall_no = (int*)addr++;
 	printf ("system call no %d!\n", syscall_no);
+
 
 	switch (syscall_no) {
 		case SYS_EXIT:
