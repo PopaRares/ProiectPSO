@@ -23,6 +23,7 @@ static thread_func start_process NO_RETURN;
 static bool load (const char *cmdline, void (**eip) (void), void **esp, char **saveptr);
 
 
+
 /* Starts a new thread running a user program loaded from
    FILENAME.  The new thread may be scheduled (and may even exit)
    before process_execute() returns.  Returns the new process's
@@ -70,6 +71,7 @@ start_process (void *file_name_)
 
   /* Initialize file list */
   list_init(&files);
+
 
   /* If load failed, quit. */
   palloc_free_page (file_name);
@@ -229,6 +231,12 @@ load (const char *file_name, void (**eip) (void), void **esp, char **saveptr)
   bool success = false;
   int i;
 
+  int fd_counter = 3;
+  struct list files;
+  
+  /* Initialize file list */
+  list_init(&files);
+
   /* Allocate and activate page directory. */
   t->pagedir = pagedir_create ();
   if (t->pagedir == NULL) 
@@ -243,8 +251,8 @@ load (const char *file_name, void (**eip) (void), void **esp, char **saveptr)
       goto done; 
     }
 
-	  // deny write to executable
-	  file_deny_write(file); 
+  t->self = file;
+  file_deny_write(file); // denies writing to executable while running
 
   /* Read and verify executable header. */
   if (file_read (file, &ehdr, sizeof ehdr) != sizeof ehdr
@@ -559,4 +567,18 @@ struct opened_file* getFile(int fd)
       return op_f;
   }
     return NULL;
+}
+
+/* closes all process files in the event of an EXIT sys call */
+void close_all_files()
+{
+  struct list_elem *e;
+  while(!list_empty(&files))
+  {
+    e = list_pop_front(&files);
+    struct opened_file *op_f = list_entry(e, struct opened_file, file_elem);
+    file_close(op_f->file);
+    list_remove(e);
+    free(op_f);
+  }
 }

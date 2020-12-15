@@ -1,5 +1,6 @@
 #include "userprog/syscall.h"
 #include <stdio.h>
+#include "threads/malloc.h"
 #include <syscall-nr.h>
 #include "threads/interrupt.h"
 #include "threads/thread.h"
@@ -12,6 +13,34 @@
 #include "pagedir.h"
 
 static void syscall_handler (struct intr_frame *);
+void verify_addresses(void*, int);
+void unexpected_exit();
+
+/* 
+  verifies a number of addresses used in system calls 
+  launches an unexpected exit if address is bust
+*/
+void
+verify_addresses(void *p, int num)
+{
+  void *iterator = p;
+  for (int i = 0; i < num; i++, iterator++)
+  {
+    if( iterator == NULL ||
+       !is_user_vaddr(iterator) ||
+       !pagedir_get_page(thread_current()->pagedir, iterator))
+    {
+      unexpected_exit();
+    }
+  }
+}
+
+void
+unexpected_exit()
+{
+  // should set current_thread exit status to -1
+  thread_exit();
+}
 
 /* 
   verifies a number of addresses used in system calls 
@@ -49,46 +78,59 @@ static void
 syscall_handler (struct intr_frame *f UNUSED) 
 {
   int* addr = f->esp;
+
+  struct file* file;
+  char* fileName;
+  off_t size;
+  struct opened_file* op_f;
+  int fd;
+  char* buffer;
+  
   verify_addresses(addr, 1);
 
 	int syscall_no = (int*)addr++;
 	printf ("system call no %d!\n", syscall_no);
 
-  char* fileName;
 
 	switch (syscall_no) {
 		case SYS_EXIT:
 			//printf ("SYS_EXIT system call!\n");
+      acquire_file_lock(); // maybe use lock internally for each file?
+        close_all_files();
+      release_file_lock();
+
+      file = thread_current()->self;
 			thread_exit();
+      file_allow_write(file); // allow writing to executable
 			break;
 
     case SYS_CREATE: // creates a new file, returns true/false, depending on the outcome
       verify_addresses(addr, 2);
-      // aquire file lock
-      fileName = (char*)addr[0];
-      off_t size = (int*)addr[1];
-      f->eax = filesys_create(fileName, size);
-      // release file lock
+      acquire_file_lock();
+        fileName = (char*)addr[0];
+        size = (int*)addr[1];
+        f->eax = filesys_create(fileName, size);
+      release_file_lock();
       break;
 
     case SYS_REMOVE: // deletes file, returns true/false, depending on the outcome
       verify_addresses(addr, 1);
-      // aquire file lock
-      fileName = (char*)addr[0];
-      f->eax = filesys_remove(fileName);
-      // release file lock
+      acquire_file_lock();
+        fileName = (char*)addr[0];
+        f->eax = filesys_remove(fileName);
+      release_file_lock();
       break;
 
     case SYS_OPEN: //opens file and returns its respective file descriptor
       verify_addresses(addr, 1);
-      // aquire file lock
-      fileName = (char*)addr[0];
-      struct file* file = filesys_open(fileName);
-      // release file lock
+      acquire_file_lock();
+        fileName = (char*)addr[0];
+        file = filesys_open(fileName);
+      release_file_lock();
       if(file)
       {
-        struct opened_file* op_f = malloc(sizeof(struct opened_file));
-        //op_f->fd = fd_counter++;
+        op_f = (struct opened_file*)malloc(sizeof(struct opened_file));
+        op_f->fd = fd_counter++;
         op_f->file = file;
         list_push_back(&files, &op_f->file_elem); // push file to process list
         
@@ -102,13 +144,13 @@ syscall_handler (struct intr_frame *f UNUSED)
 
     case SYS_FILESIZE: //returns size of file
       verify_addresses(addr, 1);
-      int fd = addr[0];
-      struct opened_file* op_f = getFile(fd);
+      fd = (int)addr[0];
+      op_f = getFile(fd);
       if(op_f)
       {
-        // aquire file lock
-        f->eax = file_length(op_f->file);
-        // release file lock
+        acquire_file_lock();
+          f->eax = file_length(op_f->file);
+        release_file_lock();
       }
       else 
       {
@@ -118,10 +160,10 @@ syscall_handler (struct intr_frame *f UNUSED)
 
     case SYS_READ: //reads from file into buffer, returns number of bytes actually read
       verify_addresses(addr, 3);
-      fd = addr[0];
-      int* buffer = addr[1];
-      size = addr[2];
-      if(fd == 0) // fd points to STDOUT
+      fd = (int)addr[0];
+      buffer = (char*)addr[1];
+      size = (int)addr[2];
+      if(fd == 0) // fd points to STDIN
       {
         for (int i = 0; i < size; i++)
         {
@@ -134,9 +176,9 @@ syscall_handler (struct intr_frame *f UNUSED)
         struct opened_file* op_f = getFile(fd);
         if(op_f)
         {
-          // aquire file lock
-          f->eax = file_read(op_f->file, buffer, size);
-          // release file lock
+          acquire_file_lock();
+            f->eax = file_read(op_f->file, buffer, size);
+          release_file_lock();
         }
         else
         {
@@ -147,22 +189,22 @@ syscall_handler (struct intr_frame *f UNUSED)
 
     case SYS_WRITE: //writes to file from buffer, returns number of bytess actualy written
       verify_addresses(addr, 3);
-      fd = addr[0];
-      buffer = addr[1];
-      size = addr[2];
-      if(fd == 1) // fd points to STDIN
+      fd = (int)addr[0];
+      buffer = (char*)addr[1];
+      size = (int)addr[2];
+      if(fd == 1) // fd points to STDOUT
       {
         putbuf(buffer, size);
         f->eax = size;
       }
       else 
       {
-        struct opened_file* op_f = getFile(fd);
+        op_f = getFile(fd);
         if(op_f)
         {
-          // aquire file lock
-          f->eax = file_write(op_f->file, buffer, size);
-          // release file lock
+          acquire_file_lock();
+            f->eax = file_write(op_f->file, buffer, size);
+          release_file_lock();
         }
         else
         {
@@ -178,9 +220,9 @@ syscall_handler (struct intr_frame *f UNUSED)
       op_f = getFile(fd);
       if(op_f)
       {
-        // aquire file lock
-        file_seek(op_f->file, position);
-        // release file lock
+        acquire_file_lock();
+          file_seek(op_f->file, position);
+        release_file_lock();
         f->eax = 0;
       }
       else
@@ -195,9 +237,9 @@ syscall_handler (struct intr_frame *f UNUSED)
       op_f = getFile(fd);
       if(op_f)
       {
-        // aquire file lock
-        f->eax = file_tell(op_f->file);
-        // release file lock
+        acquire_file_lock();
+          f->eax = file_tell(op_f->file);
+        release_file_lock();
       }
       else
       {
@@ -207,15 +249,15 @@ syscall_handler (struct intr_frame *f UNUSED)
 
     case SYS_CLOSE: //closes file descriptor
       verify_addresses(addr, 1);
-      int fd1 = addr[0];
-      op_f = getFile(fd1);
+      fd = addr[0];
+      op_f = getFile(fd);
       if(op_f)
       {
-        // aquire file lock
-        file_close(op_f->file);
-        // release file lock
+        acquire_file_lock();
+          file_close(op_f->file);
+        release_file_lock();
         list_remove(&op_f->file_elem);
-        free(op_f);
+        free(op_f->file);
         f->eax = 0;
       }
       else
