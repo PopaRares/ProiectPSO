@@ -62,8 +62,6 @@ start_process (void *file_name_)
   if_.eflags = FLAG_IF | FLAG_MBS;
   success = load (file_name, &if_.eip, &if_.esp);
 
-  /* Initialize file list */
-  list_init(&files);
 
   /* If load failed, quit. */
   palloc_free_page (file_name);
@@ -223,6 +221,12 @@ load (const char *file_name, void (**eip) (void), void **esp)
   bool success = false;
   int i;
 
+  int fd_counter = 3;
+  struct list files;
+  
+  /* Initialize file list */
+  list_init(&files);
+
   /* Allocate and activate page directory. */
   t->pagedir = pagedir_create ();
   if (t->pagedir == NULL) 
@@ -236,6 +240,9 @@ load (const char *file_name, void (**eip) (void), void **esp)
       printf ("load: %s: open failed\n", file_name);
       goto done; 
     }
+
+  t->self = file;
+  file_deny_write(file); // denies writing to executable while running
 
   /* Read and verify executable header. */
   if (file_read (file, &ehdr, sizeof ehdr) != sizeof ehdr
@@ -485,4 +492,18 @@ struct opened_file* getFile(int fd)
       return op_f;
   }
     return NULL;
+}
+
+/* closes all process files in the event of an EXIT sys call */
+void close_all_files()
+{
+  struct list_elem *e;
+  while(!list_empty(&files))
+  {
+    e = list_pop_front(&files);
+    struct opened_file *op_f = list_entry(e, struct opened_file, file_elem);
+    file_close(op_f->file);
+    list_remove(e);
+    free(op_f);
+  }
 }
