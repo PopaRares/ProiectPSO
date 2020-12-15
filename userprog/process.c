@@ -40,6 +40,9 @@ process_execute (const char *file_name)
     return TID_ERROR;
   strlcpy (fn_copy, file_name, PGSIZE);
 
+  char *saveptr;
+  file_name = strtok_r((char*)file_name, " ", &saveptr );
+
   /* Create a new thread to execute FILE_NAME. */
   tid = thread_create (file_name, PRI_DEFAULT, start_process, fn_copy);
   if (tid == TID_ERROR)
@@ -96,10 +99,10 @@ int
 process_wait (tid_t child_tid UNUSED) 
 {
   // UTCN
-  while(1);
+  //while(1);
 
   // orifinal
-  //return -1;
+  return -1;
 }
 
 /* Free the current process's resources. */
@@ -448,52 +451,54 @@ setup_stack (void **esp, char **saveptr, const char *file_name)
 
   kpage = palloc_get_page (PAL_USER | PAL_ZERO);
   if (kpage != NULL) 
-    {
-      success = install_page (((uint8_t *) PHYS_BASE) - PGSIZE, kpage, true);
-      *esp = PHYS_BASE;
-      } 
-      else
-      {
-        palloc_free_page (kpage);
-        return success;
-      }
+  {
+    success = install_page (((uint8_t *) PHYS_BASE) - PGSIZE, kpage, true);
+    *esp = PHYS_BASE;
+  } 
+  else
+  {
+    palloc_free_page (kpage);
+    //return success;
+  }
 
-    const int DEFAULT_ARGV = 2;
-	  char* token;
-	  char** argv = malloc(DEFAULT_ARGV*sizeof(char*));
-	  char** cont = malloc(DEFAULT_ARGV*sizeof(char*));
+	char* token;
+	char** argv = malloc(2*sizeof(char*));
+	char** aux = malloc(2*sizeof(char*));
 	  
-	  int i, argc = 0;
-	  int byte_size = 0;
-	  int arg_size = DEFAULT_ARGV;
-	  // copy command line into cont and resize to necessary size
-	  for (token = (char*)file_name; token != NULL; token = strtok_r(NULL, " ", saveptr)){
-	    cont[argc] = token;
-	    argc++;
-	    if (argc >= arg_size) {
-	      arg_size *= 2;
-	      cont = realloc (cont, arg_size*sizeof(char*));
-	      argv = realloc (argv, arg_size*sizeof(char*));
-	    }
+	int i, argc = 0;
+	int byte_size = 0;
+	int arg_size = 2;
+	
+  // copiem de argumentele in variabila auxiliara si facem resize pana cand avem marimea dorita
+	for (token = (char*)file_name; token != NULL; token = strtok_r(NULL, " ", saveptr)){
+	  aux[argc] = token;
+	  argc++;
+	  if (argc >= arg_size) {
+	    arg_size += 1;
+	    aux = realloc (aux, arg_size*sizeof(char*));
+	    argv = realloc (argv, arg_size*sizeof(char*));
 	  }
-	  // copy content of cont over to argv
-	  for (i = argc-1; i >= 0; i--){
-	    *esp -= strlen(cont[i])+1;
-	    byte_size += strlen(cont[i])+1;
-	    argv[i] = *esp;
-	    memcpy (*esp, cont[i], strlen(cont[i])+1);
-	  }
-	  // add null 
-	  argv[argc] = 0;
+	}
+	
+  // copiem continutul din aux in argv si urcam in stiva caracterele
+	for (i = argc-1; i >= 0; i--){
+    *esp -= strlen(aux[i])+1;
+	  byte_size += strlen(aux[i])+1;
+	  argv[i] = *esp;
+	  memcpy (*esp, aux[i], strlen(aux[i])+1);
+	}
 	  
-	  // word align by word size (4 bytes)
-	  i = (size_t) *esp % 4;
-	  if (i){
-	    *esp -= i;
-	    byte_size += i;
-	    memcpy(*esp, &argv[argc], i );
-	  }
-	  // push argv[i] for i = 0, 1, ..., argc
+  // adaugam null 
+	argv[argc] = 0;
+	  
+	// word allign
+	i = (size_t) *esp % 4;
+	if (i){
+	  *esp -= i;
+	  byte_size += i;
+	  memcpy(*esp, &argv[argc], i );
+	}
+	  //facem push la argv[i] in ordine inversa
 	  for (i = argc; i >= 0; i--){
 	    *esp -= sizeof(char*);
 	    byte_size += sizeof(char*);
@@ -501,21 +506,25 @@ setup_stack (void **esp, char **saveptr, const char *file_name)
 	  }
 	  
 	  token = *esp;
+
 	  // push argv
 	  *esp -= sizeof (char**);
 	  byte_size += sizeof (char**);
 	  memcpy(*esp, &token, sizeof(char**));
-	  // push argc
+	  
+    // push argc
 	  *esp -= sizeof (int);
 	  byte_size += sizeof (int);
 	  memcpy(*esp, &argc, sizeof(int));
-	  // push fake return address
+	  
+    // push fake return address
 	  *esp -= sizeof(void*);
 	  byte_size += sizeof(void*);
 	  memcpy(*esp, &argv[argc], sizeof (void*));
-	  // free argv and cont
+	  
+    // free argv si aux
 	  free(argv);
-	  free(cont);
+	  free(aux);
 
     return success;  
 }

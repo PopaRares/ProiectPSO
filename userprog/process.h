@@ -10,7 +10,7 @@ struct opened_file
     struct list_elem file_elem;
 };
 
-int fd_counter = 3;
+//int fd_counter = 3;
 struct list files;
 
 tid_t process_execute (const char *file_name);
