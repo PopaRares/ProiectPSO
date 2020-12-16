@@ -100,11 +100,32 @@ start_process (void *file_name_)
 int
 process_wait (tid_t child_tid UNUSED) 
 {
-  // UTCN
-  //while(1);
+  struct thread *cur_th = thread_current();
+  struct list *p_children = &cur_th->p_children;
+  struct list_elem *list_e = NULL;
+  struct thread *child_p = NULL;
+  
+  for(list_e = list_begin(p_children); list_e != list_end(p_children); list_e = list_next(list_e)) {
+    child_p = list_entry(list_e, struct thread, p_elem);
+    if(child_p->parent_th->tid == child_tid) {
+      if (!child_p->is_waited) {
+        child_p->is_waited = true;
+        sema_down(&child_p->sema);
+        break;
+      } 
+      
+      return -1;
+    }
+  }
+  // no more processes
+  if (list_e == list_end(p_children))
+    return -1;
+  //Save the exit status of the child process and return it
+  int status = child_p->exit_status;
+  list_remove(list_e);
+  free(child_p);
 
-  // orifinal
-  return -1;
+  return status;
 }
 
 /* Free the current process's resources. */
