@@ -78,6 +78,7 @@ syscall_handler (struct intr_frame *f UNUSED)
   verify_addresses(addr, 1);
 
 	int syscall_no = addr[0];
+	addr++;
   printf("\nSYSCALL %d\n", syscall_no);
 
 	switch (syscall_no) {
@@ -99,7 +100,7 @@ syscall_handler (struct intr_frame *f UNUSED)
       close_all_files();
       release_file_lock();
 
-      thread_current()->exit_status = addr[1];
+      thread_current()->exit_status = addr[0];
       printf("%s: exit(%d)\n", thread_current()->name, thread_current()->exit_status);
       file = thread_current()->self;
 			thread_exit();
@@ -110,7 +111,7 @@ syscall_handler (struct intr_frame *f UNUSED)
       verify_addresses(addr, 2);
       acquire_file_lock();
         fileName = (char*)addr[0];
-        size = (int*)addr[1];
+        size = (int)addr[1];
         f->eax = filesys_create(fileName, size);
       release_file_lock();
       break;
@@ -191,9 +192,9 @@ syscall_handler (struct intr_frame *f UNUSED)
 
     case SYS_WRITE: //writes to file from buffer, returns number of bytess actualy written
       verify_addresses(addr, 3);
-      fd = (int)addr[1];
-      buffer = (char*)addr[2];
-      size = (int)addr[3];
+      fd = (int)addr[0];
+      buffer = (char*)addr[1];
+      size = (int)addr[2];
       if(fd == 1) // fd points to STDOUT
       {
         putbuf(buffer, size);
