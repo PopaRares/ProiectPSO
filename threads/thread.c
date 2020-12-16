@@ -186,7 +186,13 @@ thread_create (const char *name, int priority,
   /* Initialize thread. */
   init_thread (t, name, priority);
   tid = t->tid = allocate_tid ();
-
+  //Process 
+  t->parent_th = thread_current();
+  t->exit_status = UINT32_MAX;
+  t->is_waited = false;
+  sema_init(&t->sema, 0);
+  list_push_back(&thread_current()->p_children, &t->p_elem);
+  
   /* Prepare thread for first run by initializing its stack.
      Do this atomically so intermediate values for the 'stack' 
      member cannot be observed. */
