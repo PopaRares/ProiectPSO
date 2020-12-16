@@ -98,6 +98,8 @@ struct thread
     /* Owned by userprog/process.c. */
     uint32_t *pagedir;                  /* Page directory. */
     struct file *self;                   /* Refference to own file executable */
+    int pid;
+    int uthread_id;
 #endif
 
     /* Owned by thread.c. */
