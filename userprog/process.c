@@ -110,7 +110,7 @@ int process_wait(tid_t child_tid UNUSED)
   for (list_e = list_begin(p_children); list_e != list_end(p_children); list_e = list_next(list_e))
   {
     child_p = list_entry(list_e, struct thread, p_elem);
-    if (child_p->parent_th->tid == cur_th->tid)
+    if (child_p->tid == child_tid)
     {
       if (!child_p->is_waited)
       {
