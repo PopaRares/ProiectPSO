@@ -92,6 +92,7 @@ thread_init (void)
 {
   ASSERT (intr_get_level () == INTR_OFF);
 
+  lock_init(&file_lock);
   lock_init (&tid_lock);
   list_init (&ready_list);
   list_init (&all_list);
@@ -186,6 +187,12 @@ thread_create (const char *name, int priority,
   /* Initialize thread. */
   init_thread (t, name, priority);
   tid = t->tid = allocate_tid ();
+  //Process
+  t->parent_th = thread_current();
+  t->exit_status = UINT32_MAX;
+  t->is_waited = false;
+  sema_init(&t->sema, 0);
+  list_push_back(&thread_current()->p_children, &t->p_elem);
 
   /* Prepare thread for first run by initializing its stack.
      Do this atomically so intermediate values for the 'stack' 
@@ -472,6 +479,7 @@ init_thread (struct thread *t, const char *name, int priority)
   t->stack = (uint8_t *) t + PGSIZE;
   t->priority = priority;
   t->magic = THREAD_MAGIC;
+  list_init(&t->p_children);
   list_push_back (&all_list, &t->allelem);
 }
 
