@@ -63,7 +63,6 @@ syscall_handler (struct intr_frame *f UNUSED)
   verify_addresses(addr, 1);
 
 	int syscall_no = (int*)addr++;
-	printf ("system call no %d!\n", syscall_no);
 
 
 	switch (syscall_no) {
@@ -77,6 +76,7 @@ syscall_handler (struct intr_frame *f UNUSED)
     case SYS_EXEC:
       verify_addresses(addr, 1);
       f->eax = process_execute((char)*addr);
+      break;
 		case SYS_EXIT:
       verify_addresses(addr, 1);
 			//printf ("SYS_EXIT system call!\n");
@@ -85,6 +85,7 @@ syscall_handler (struct intr_frame *f UNUSED)
       release_file_lock();
 
       thread_current()->exit_status = *addr;
+      printf("%s: exit(%d)\n", thread_current()->name, thread_current()->exit_status);
       file = thread_current()->self;
 			thread_exit();
       file_allow_write(file); // allow writing to executable
@@ -174,6 +175,7 @@ syscall_handler (struct intr_frame *f UNUSED)
       break;
 
     case SYS_WRITE: //writes to file from buffer, returns number of bytess actualy written
+      printf("++++++++++++");
       verify_addresses(addr, 3);
       fd = (int)addr[0];
       buffer = (char*)addr[1];
