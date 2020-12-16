@@ -18,6 +18,8 @@
 #include "threads/thread.h"
 #include "threads/vaddr.h"
 #include "threads/malloc.h"
+#include <syscall-nr.h>
+
 
 static thread_func start_process NO_RETURN;
 static bool load(const char *cmdline, void (**eip)(void), void **esp, char **saveptr);
@@ -73,6 +75,8 @@ start_process(void *file_name_)
   palloc_free_page(file_name);
   if (!success)
     thread_exit();
+
+  thread_current()->pid = thread_current()->tid;	// the main thread has pid = tid
 
   /* Start the user process by simulating a return from an
      interrupt, implemented by intr_exit (in
@@ -147,10 +151,15 @@ void process_exit(void)
          directory before destroying the process's page
          directory, or our active page directory will be one
          that's been freed (and cleared). */
-    cur->pagedir = NULL;
-    pagedir_activate(NULL);
-    pagedir_destroy(pd);
-  }
+      if (cur->pid != cur->tid)	{ // not the main thread of the process
+		    cur->pagedir = NULL;
+		    pagedir_activate (NULL);
+	    } else {
+        cur->pagedir = NULL;
+        pagedir_activate (NULL);
+        pagedir_destroy (pd);
+      }
+    }
 }
 
 /* Sets up the CPU for running user code in the current
@@ -601,4 +610,58 @@ void close_all_files()
     list_remove(e);
     free(op_f);
   }
+}
+
+
+
+static void
+start_process_uthread(struct uthread_args *th_arg);
+
+/* Starts a new user thread running a user function in the current process */
+tid_t
+process_uthread_execute (struct uthread_args *th_arg)
+{
+  tid_t tid;
+
+  tid = thread_create (th_arg->th_name, PRI_DEFAULT, start_process_uthread, th_arg);
+  if (tid == TID_ERROR)
+    return -1;
+
+  return tid;
+}
+
+/* A user thread that starts running a user function */
+static void
+start_process_uthread(struct uthread_args *th_arg)
+{
+	  struct intr_frame if_;
+	  bool success;
+
+	  memset (&if_, 0, sizeof if_);
+	  if_.gs = if_.fs = if_.es = if_.ds = if_.ss = SEL_UDSEG;
+	  if_.cs = SEL_UCSEG;
+	  if_.eflags = FLAG_IF | FLAG_MBS;
+
+	 if_.esp = (PHYS_BASE - PGSIZE/2) - (th_arg->th_no * ((int)(PGSIZE/2)/TH_NO));
+
+	   thread_current()->pagedir = th_arg->th_pagedir;
+	  process_activate();
+
+	  if_.esp -= 4;
+	  *((int*)if_.esp) = th_arg->th_fc_arg;
+
+	  if_.esp -= 4;
+	   if_.eip = (void (*) (void)) th_arg->th_fc_addr;
+
+	   thread_current()->pid = th_arg->th_pid;
+	  thread_current()->uthread_id = th_arg->th_no;
+
+	  /* Start the user thread by simulating a return from an
+	     interrupt, implemented by intr_exit (in
+	     threads/intr-stubs.S).  Because intr_exit takes all of its
+	     arguments on the stack in the form of a `struct intr_frame',
+	     we just point the stack pointer (%esp) to our stack frame
+	     and jump to it. */
+	  asm volatile ("movl %0, %%esp; jmp intr_exit" : : "g" (&if_) : "memory");
+	  NOT_REACHED ();
 }
