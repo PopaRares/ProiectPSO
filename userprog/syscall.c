@@ -16,25 +16,6 @@ static void syscall_handler (struct intr_frame *);
 void verify_addresses(void*, int);
 void unexpected_exit();
 
-/* 
-  verifies a number of addresses used in system calls 
-  launches an unexpected exit if address is bust
-*/
-void
-verify_addresses(void *p, int num)
-{
-  void *iterator = p;
-  for (int i = 0; i < num; i++, iterator++)
-  {
-    if( iterator == NULL ||
-       !is_user_vaddr(iterator) ||
-       !pagedir_get_page(thread_current()->pagedir, iterator))
-    {
-      unexpected_exit();
-    }
-  }
-}
-
 void
 unexpected_exit()
 {
@@ -59,13 +40,6 @@ verify_addresses(void *p, int num)
       unexpected_exit();
     }
   }
-}
-
-void
-unexpected_exit()
-{
-  // should set current_thread exit status to -1
-  thread_exit();
 }
 
 void
