@@ -67,12 +67,24 @@ syscall_handler (struct intr_frame *f UNUSED)
 
 
 	switch (syscall_no) {
+    case SYS_HALT:
+      shutdown_power_off();
+      break;
+    case SYS_WAIT:
+      verify_addresses(addr, 1);
+      f->eax = process_wait(*addr);
+      break;
+    case SYS_EXEC:
+      verify_addresses(addr, 1);
+      f->eax = process_execute((char)*addr);
 		case SYS_EXIT:
+      verify_addresses(addr, 1);
 			//printf ("SYS_EXIT system call!\n");
       acquire_file_lock(); // maybe use lock internally for each file?
-        close_all_files();
+      close_all_files();
       release_file_lock();
 
+      thread_current()->exit_status = *addr;
       file = thread_current()->self;
 			thread_exit();
       file_allow_write(file); // allow writing to executable
