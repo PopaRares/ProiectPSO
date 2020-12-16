@@ -106,7 +106,7 @@ int process_wait(tid_t child_tid UNUSED)
   for (list_e = list_begin(p_children); list_e != list_end(p_children); list_e = list_next(list_e))
   {
     child_p = list_entry(list_e, struct thread, p_elem);
-    if (child_p->parent_th->tid == child_tid)
+    if (child_p->parent_th->tid == cur_th->tid)
     {
       if (!child_p->is_waited)
       {
@@ -241,6 +241,8 @@ static bool load_segment(struct file *file, off_t ofs, uint8_t *upage,
    Stores the executable's entry point into *EIP
    and its initial stack pointer into *ESP.
    Returns true if successful, false otherwise. */
+  struct list files;
+   
 bool load(const char *file_name, void (**eip)(void), void **esp, char **saveptr)
 {
   struct thread *t = thread_current();
@@ -251,7 +253,6 @@ bool load(const char *file_name, void (**eip)(void), void **esp, char **saveptr)
   int i;
 
   int fd_counter = 3;
-  struct list files;
 
   /* Initialize file list */
   list_init(&files);

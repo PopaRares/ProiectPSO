@@ -62,8 +62,8 @@ syscall_handler (struct intr_frame *f UNUSED)
   
   verify_addresses(addr, 1);
 
-	int syscall_no = (int*)addr++;
-
+	int syscall_no = addr[0];
+  printf("\nSYSCALL %d\n", syscall_no);
 
 	switch (syscall_no) {
     case SYS_HALT:
@@ -175,11 +175,10 @@ syscall_handler (struct intr_frame *f UNUSED)
       break;
 
     case SYS_WRITE: //writes to file from buffer, returns number of bytess actualy written
-      printf("++++++++++++");
       verify_addresses(addr, 3);
-      fd = (int)addr[0];
-      buffer = (char*)addr[1];
-      size = (int)addr[2];
+      fd = (int)addr[1];
+      buffer = (char*)addr[2];
+      size = (int)addr[3];
       if(fd == 1) // fd points to STDOUT
       {
         putbuf(buffer, size);
@@ -258,5 +257,5 @@ syscall_handler (struct intr_frame *f UNUSED)
       unexpected_exit();
 	}
 
-	thread_exit ();
+	return;
 }

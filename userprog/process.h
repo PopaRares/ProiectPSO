@@ -11,7 +11,7 @@ struct opened_file
 };
 
 static int fd_counter;
-static struct list files;
+extern struct list files;
 
 tid_t process_execute (const char *file_name);
 int process_wait (tid_t);
