@@ -84,7 +84,7 @@ syscall_handler (struct intr_frame *f UNUSED)
       close_all_files();
       release_file_lock();
 
-      thread_current()->exit_status = *addr;
+      thread_current()->exit_status = addr[1];
       printf("%s: exit(%d)\n", thread_current()->name, thread_current()->exit_status);
       file = thread_current()->self;
 			thread_exit();
