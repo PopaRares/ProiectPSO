@@ -37,6 +37,9 @@ static struct thread *initial_thread;
 /* Lock used by allocate_tid(). */
 static struct lock tid_lock;
 
+/* Lock used to prevent multiple threads to access the file system */
+static struct lock file_lock;
+
 /* Stack frame for kernel_thread(). */
 struct kernel_thread_frame 
   {
@@ -92,6 +95,7 @@ thread_init (void)
 {
   ASSERT (intr_get_level () == INTR_OFF);
 
+  lock_init(&file_lock);
   lock_init (&tid_lock);
   list_init (&ready_list);
   list_init (&all_list);
@@ -186,6 +190,12 @@ thread_create (const char *name, int priority,
   /* Initialize thread. */
   init_thread (t, name, priority);
   tid = t->tid = allocate_tid ();
+  //Process
+  t->parent_th = thread_current();
+  t->exit_status = UINT32_MAX;
+  t->is_waited = false;
+  sema_init(&t->sema, 0);
+  list_push_back(&thread_current()->p_children, &t->p_elem);
 
   /* Prepare thread for first run by initializing its stack.
      Do this atomically so intermediate values for the 'stack' 
@@ -516,6 +526,7 @@ init_thread (struct thread *t, const char *name, int priority)
   t->magic = THREAD_MAGIC;
   list_init(&t->acquired_locks_list);
   t->waited_lock = NULL;
+  list_init(&t->p_children);
   list_push_back (&all_list, &t->allelem);
 }
 
@@ -611,7 +622,7 @@ schedule (void)
   ASSERT (is_thread (next));
 
   if (cur != next)
-    prev = switch_threads(cur, next);
+    prev = switch_threads (cur, next);
   thread_schedule_tail (prev);
 }
 
@@ -669,4 +680,15 @@ thread_donate_priority(struct thread *th_lkholder) {
     if (lock_holders->waited_lock == NULL) break;
     lock_holders = lock_holders->waited_lock->holder;
   }
+
+void
+acquire_file_lock()
+{
+  lock_acquire(&file_lock);
+}
+
+void
+release_file_lock()
+{
+  lock_release(&file_lock);
 }

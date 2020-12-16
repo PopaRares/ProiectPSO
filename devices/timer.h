@@ -3,12 +3,6 @@
 
 #include <round.h>
 #include <stdint.h>
-#include <debug.h>
-#include <inttypes.h>
-#include "devices/pit.h"
-#include "threads/interrupt.h"
-#include "threads/synch.h"
-#include "threads/thread.h"
 
 /* Number of timer interrupts per second. */
 #define TIMER_FREQ 100

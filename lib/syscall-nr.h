@@ -3,6 +3,8 @@
 
 #include <stdint.h>
 
+#define TH_NO 3
+
 /* System call numbers. */
 enum 
   {

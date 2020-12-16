@@ -13,7 +13,7 @@
 #include <random.h>
 #include <stdlib.h>
 #include <stdio.h>
-#include "threads/tests.h"
+#include "threads/test.h"
 
 /* Maximum number of elements in an array that we will test. */
 #define MAX_CNT 4096

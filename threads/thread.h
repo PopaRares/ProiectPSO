@@ -4,6 +4,7 @@
 #include <debug.h>
 #include <list.h>
 #include <stdint.h>
+#include "synch.h"
 
 /* States in a thread's life cycle. */
 enum thread_status
@@ -100,10 +101,19 @@ struct thread
 #ifdef USERPROG
     /* Owned by userprog/process.c. */
     uint32_t *pagedir;                  /* Page directory. */
+    struct file *self;                   /* Refference to own file executable */
+    int pid;
+    int uthread_id;
 #endif
 
     /* Owned by thread.c. */
     unsigned magic;                     /* Detects stack overflow. */
+    struct thread *parent_th;
+    int exit_status;
+    struct semaphore sema;
+    bool is_waited;
+    struct list p_children;
+    struct list_elem p_elem;
   };
 
 /* If false (default), use round-robin scheduler.
@@ -146,4 +156,12 @@ void thread_recompute_priority(struct thread *th);
 void thread_donate_priority(struct thread *th_lkholder);
 bool thread_compare(struct list_elem *e1, struct list_elem *e2, void* aux);
 
+void acquire_file_lock(void);
+void release_file_lock(void);
+
 #endif /* threads/thread.h */
+
+
+
+
+

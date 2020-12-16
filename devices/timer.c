@@ -20,9 +20,6 @@
 /* Number of timer ticks since OS booted. */
 static int64_t ticks;
 
-//global list keeping track of all timers in the system
-static struct list alarm_clock_list ;
-
 /* Number of loops per timer tick.
    Initialized by timer_calibrate(). */
 static unsigned loops_per_tick;
@@ -32,7 +29,6 @@ static bool too_many_loops (unsigned loops);
 static void busy_wait (int64_t loops);
 static void real_time_sleep (int64_t num, int32_t denom);
 static void real_time_delay (int64_t num, int32_t denom);
-
 
 bool alarm_clock_compare(struct list_elem *t1, struct list_elem *t2, void* aux UNUSED){
   struct alarm_clock *alarm1 = list_entry(t1, struct alarm_clock, alarm_clock_elem);
@@ -67,7 +63,6 @@ void alarm_clock_check_all(void){
 void
 timer_init (void) 
 {
-  list_init(&alarm_clock_list);
   pit_configure_channel (0, 2, TIMER_FREQ);
   intr_register_ext (0x20, timer_interrupt, "8254 Timer");
 }
@@ -122,23 +117,11 @@ timer_elapsed (int64_t then)
 void
 timer_sleep (int64_t ticks) 
 {
-  int64_t start = timer_ticks();
-  enum intr_level old_level;
-  struct alarm_clock alarm;
-  alarm.waking_time = ticks + start;
-  alarm.thread = thread_current();
+  int64_t start = timer_ticks ();
 
-  //ASSERT (intr_get_level () == INTR_ON);
-
-  old_level = intr_disable();
-  list_insert_ordered(&alarm_clock_list, &alarm.alarm_clock_elem , alarm_clock_compare, NULL);
-  //list_push_back(&alarm_clock_list, &alarm);
-  thread_block();
-  intr_set_level(old_level);
-  
- // while (timer_elapsed (start) < ticks) 
- //   thread_yield ();
- 
+  ASSERT (intr_get_level () == INTR_ON);
+  while (timer_elapsed (start) < ticks) 
+    thread_yield ();
 }
 
 /* Sleeps for approximately MS milliseconds.  Interrupts must be
@@ -216,8 +199,7 @@ static void
 timer_interrupt (struct intr_frame *args UNUSED)
 {
   ticks++;
-  thread_tick();
-  alarm_clock_check_all();
+  thread_tick ();
 }
 
 /* Returns true if LOOPS iterations waits for more than one timer
@@ -292,4 +274,3 @@ real_time_delay (int64_t num, int32_t denom)
   ASSERT (denom % 1000 == 0);
   busy_wait (loops_per_tick * num / 1000 * TIMER_FREQ / (denom / 1000)); 
 }
-

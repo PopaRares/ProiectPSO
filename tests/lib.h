@@ -5,8 +5,6 @@
 #include <stdbool.h>
 #include <stddef.h>
 #include <syscall.h>
-#include <stdint.h>
-#include <unistd.h>
 
 extern const char *test_name;
 extern bool quiet;
